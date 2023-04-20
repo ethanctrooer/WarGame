@@ -41,11 +41,11 @@ class Unit(object):
             classDict = {
                   "Interceptor" : [30, 999, 6],
                   "Fighter" : [60, 999, 3],
-                  "Multirole-B" : [60, 70, 0],
+                  "Multirole-B" : [60, 70, 0, 1],
                   "Multirole-F" : [60, 70, 3],
                   "CAS" : [40, 70, 0],
-                  "Stealth-B" : [80, 70, 0],
-                  "Gunship" : [20, 100, 0],
+                  "Stealth-B" : [80, 70, 0, 2],
+                  "Gunship" : [20, 100, 0, 2],
                   "SEAD" : [80, 80, 6],
                   "SR" : [0, 100, 3],
                   "SAM" : [0, 999, 2]
@@ -63,12 +63,19 @@ class Unit(object):
       def getCoords(self):
             return [self.x, self.y]
       
+      def getDefChecks(self):
+            return self.defChecks
+      
+      def isAlive(self):
+            return self.alive
+      
       def addDefCheck(self):
             self.defChecks += 1
             print(self.name + " currently has " + str(self.defChecks) + " defense checks.")
 
       def die(self):
             self.alive = False
+            print(self.name + " died!")
 
 class gridSquare(object):
       def __init__(self, TEAM, isBattleSquare, isBoarderSquare, currentUnits, x, y):
@@ -78,6 +85,8 @@ class gridSquare(object):
             self.currentUnits = currentUnits #array of current units present
             self.x = x
             self.y = y
+            self.BLU_points = 0
+            self.OP_points = 0
 
       def getBattleStatus(self):
             return self.isBattleSquare
@@ -96,6 +105,14 @@ class gridSquare(object):
             if len(self.currentUnits) > 0:
                   return True
             return False
+      
+      def addPoints(self, TEAM, points):
+            if TEAM:
+                  self.BLU_points += points
+                  print("BLUFOR has scored " + str(points) + " point(s)!")
+            else:
+                  self.OP_points += points
+                  print("OPFOR has scored " + str(points) + " point(s)!")
 
 class gameMap(object):
 
@@ -108,8 +125,13 @@ class gameMap(object):
             #test unit
             self.mapArray[1][1][0].addUnits("Interceptor", True)
             self.mapArray[1][2][0].addUnits("Interceptor", False)
+
+            self.mapArray[3][15][0].addUnits("Interceptor", False)
+            self.mapArray[3][17][0].addUnits("Gunship", True)
+
             self.mapArray[15][2][0].addUnits("Interceptor", False)
-            self.mapArray[20][2][0].addUnits("Fighter", True)
+            self.mapArray[20][2][0].addUnits("Fighter", False)
+            self.mapArray[17][2][0].addUnits("Gunship", True)
 
             battleSquares = 3 #set number of battle squares
             xCoordBoarder = 5 #set x coordinate of boarder
@@ -141,10 +163,10 @@ class gameMap(object):
                                     pygame.draw.rect(display, BLUE, rect)
                               else:
                                     pygame.draw.rect(display, RED, rect)
-                        if self.mapArray[idx][idy][0].isBattleSquare == False: #0 is to get thing from list size of 1 this language sucks
-                              pygame.draw.rect(display, WHITE, rect, 1)
+                        if self.mapArray[idx][idy][0].isBattleSquare == True: #0 is to get thing from list size of 1 this language sucks
+                              pygame.draw.rect(display, GREEN, rect, self.blockSize, self.blockSize) #makes a circle 
                         else:
-                              pygame.draw.rect(display, GREEN, rect, self.blockSize, self.blockSize) #makes a circle      
+                              pygame.draw.rect(display, WHITE, rect, 1)
 
                         #print(self.mapArray[idx][idy][0].getCoord())
       
@@ -179,18 +201,35 @@ class gameMap(object):
                                     #add defense check
                                     j.addDefCheck()
 
+            #Carry out defense checks
+            for e in airUnits[1]: #this list contains all the air units in combat
+                  if e.getDefChecks() > 0:
+                        stats = e.getStats()[1]
+                        def_stat = stats[0]
+                        for i in range(e.getDefChecks()):
+                              if def_stat > np.random.randint(0, 100):
+                                    e.die()
 
-            for x in self.mapArray:
-                  for y in x:
-                        gridObj = y[0]
-                        if gridObj.isBattleSquare:
-                              coord = gridObj.getCoord()
-                              return
-            return
+            #Carry out bombing runs
+            for e in airUnits[2]:
+                  if e.isAlive(): #only check if unit is still alive
+                        TEAM = e.getStats()[2]
+                        stats = e.getStats()[1]
+                        attk_stat = stats[1]
+                        if attk_stat > np.random.randint(0,100):
+                              unit_coord = e.getCoords()
+                              if self.mapArray[unit_coord[0]][unit_coord[1]][0].isBattleSquare == True:
+                                    self.mapArray[unit_coord[0]][unit_coord[1]][0].addPoints(TEAM, stats[3]) #add points to grid Object
+                              else:
+                                    print(str(e.name) + " scored, but not on a battle square!")
+
+            #TODO: do something with the dead units
+
       
       def getUnits(self):
             coordIntFight = []
-            coordOtherAir = [] #need to add more for other forces
+            coordBombers = []
+            coordAll = [] #need to add more for other forces
             for x in self.mapArray:
                   for y in x:
                         gridObj = y[0]
@@ -201,9 +240,11 @@ class gameMap(object):
                                     stats = e.getStats()
                                     if (stats[0] == "Interceptor") | (stats[0] == "Fighter"):
                                           coordIntFight.append(e) #add int, fighter
-                                    coordOtherAir.append(e) #add all int, fight, and bomb
+                                    else:
+                                          coordBombers.append(e) #add bombers
+                                    coordAll.append(e) #add all int, fight, and bomb
 
-            return [coordIntFight, coordOtherAir]
+            return [coordIntFight, coordAll, coordBombers]
 
       def search(self, coord):
             #create array to search``
