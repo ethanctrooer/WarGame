@@ -181,9 +181,11 @@ class gameMap(object):
             else:
                   return False
 
+      #TODO: move to server side
       def calcBattle(self):
             airUnits = self.getUnits() #returns Unit objects
 
+            #NOTE: implement interceptor/fighter checks before bombers?
             #Add up all defense checks for in range units
             for e in airUnits[0]: #Unit objects with all interceptors and fighters
                   e_coord = e.getCoords()
@@ -192,23 +194,25 @@ class gameMap(object):
                         j_coord = j.getCoords()
 
                         if (e != j) and (e.getStats()[2] != j.getStats()[2]): #if e is not the same unit as j and they are not on the same team
-                              #check if is inside fighter/interceptor radius
-                              radius = e.getStats()[1][2]
+                              radius = e.getStats()[1][2] #get coordinates of interceptor/fighter
                               x1, y1 = e_coord[0], e_coord[1]
                               x2, y2 = j_coord[0], j_coord[1]
 
+                              #check if j (air unit) is inside fighter/interceptor radius
                               if self.isInside(x1, y1, radius, x2, y2):
                                     #add defense check
                                     j.addDefCheck()
 
             #Carry out defense checks
-            for e in airUnits[1]: #this list contains all the air units in combat
-                  if e.getDefChecks() > 0:
-                        stats = e.getStats()[1]
+            for j in airUnits[1]: #this list contains all the air units in combat
+                  if j.getDefChecks() > 0:
+                        stats = j.getStats()[1]
                         def_stat = stats[0]
-                        for i in range(e.getDefChecks()):
-                              if def_stat > np.random.randint(0, 100):
-                                    e.die()
+                        for i in range(j.getDefChecks()):
+                              rand = np.random.randint(0, 100)
+                              if def_stat < rand:
+                                    #print(str(def_stat) + " " + str(rand))
+                                    j.die()
 
             #Carry out bombing runs
             for e in airUnits[2]:
