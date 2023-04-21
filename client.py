@@ -10,29 +10,27 @@ client.connect(("127.0.0.1", 5050))
 #Initialize pygame
 pygame.init()
 pygame.font.init()
-#comic_sans = pygame.font.SysFont('Comic Sans MS', 100)
-comic_sans = pygame.font.SysFont('None', 100)
+#print(pygame.font.get_fonts())
+arial = pygame.font.SysFont('arial', 15)
 
-#for entire 
+#for entire window
 WINDOW_WIDTH = 900
 WINDOW_HEIGHT = 600
+#for game map
 MAP_WIDTH = 600
 MAP_HEIGHT = 600
-#WINDOW_WIDTH = 100
-#WINDOW_HEIGHT = 100
 
+#initialize colors
 BLACK = (0, 0, 0)
 WHITE = (200, 200, 200)
 BLUE = (45, 103, 255)
 RED = (255, 45, 45)
+GREEN = (0, 255, 0)
 
 display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
 
-#Constants
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-
+#Unit type object
 class Unit(object):
 
       def __init__(self, name, TEAM, x, y):
@@ -84,6 +82,7 @@ class Unit(object):
             self.alive = False
             print(self.name + " died!")
 
+#Object to track what's in each grid square
 class gridSquare(object):
       def __init__(self, TEAM, isBattleSquare, isBoarderSquare, currentUnits, x, y):
             self.TEAM = TEAM #BLUFOR is TRUE. OPFOR is FALSE.
@@ -121,17 +120,19 @@ class gridSquare(object):
                   self.OP_points += points
                   print("OPFOR has scored " + str(points) + " point(s)!")
 
+#should only be one - object for the game map & contains battle calculations
 class gameMap(object):
 
       def __init__(self, blockSize):
             self.numBlocks = int(MAP_WIDTH / blockSize)
-            print(self.numBlocks)
+            #print(self.numBlocks)
             self.blockSize = blockSize #change size of map with either blocksize or windowsize
             self.mapArray = np.array([ [[gridSquare(True, False, False, [], i, j),] for j in range(self.numBlocks)] for i in range(self.numBlocks) ])
 
-            #test unit
+            #test units
             self.mapArray[1][1][0].addUnits("Interceptor", True)
             self.mapArray[1][2][0].addUnits("Interceptor", False)
+            self.mapArray[1][2][0].addUnits("Interceptor", True)
 
             self.mapArray[3][15][0].addUnits("Interceptor", False)
             self.mapArray[3][17][0].addUnits("Gunship", True)
@@ -141,17 +142,17 @@ class gameMap(object):
             self.mapArray[17][2][0].addUnits("Gunship", True)
 
             battleSquares = 3 #set number of battle squares
-            xCoordBoarder = 5 #set x coordinate of boarder
-            battleCities = np.random.randint(0, len(self.mapArray[xCoordBoarder][:]), battleSquares).tolist() #sometimes only generates 2 for some reason, good bug
+            xCoordBoarder = int(self.numBlocks/2) #set x coordinate of boarder, just in the middle right now
+            randBattleCities = np.random.randint(0, len(self.mapArray[xCoordBoarder][:]), battleSquares).tolist() #sometimes only generates 2 for some reason, good bug
 
-            #add spacing of 1 between battle cities
-            while 1 in np.diff(battleCities):
-                  battleCities = np.random.randint(0, len(self.mapArray[xCoordBoarder][:]), battleSquares).tolist()
+            #add spacing of 1 between battle cities - doesn't work lmao
+            while 1 in np.diff(randBattleCities):
+                  randBattleCities = np.random.randint(0, len(self.mapArray[xCoordBoarder][:]), battleSquares).tolist()
 
-            #set boarder cities & set 3 random cities to battle squares
+            #set gridObj values: boarder cities & set 3 random cities to battle squares
             for id, e in enumerate(self.mapArray[xCoordBoarder][:]): #select column at boarder x coordinate
                   gridObj = e[0] #select grid square
-                  if id in battleCities:
+                  if id in randBattleCities:
                         gridObj.isBattleSquare = True #set battle squares
                   gridObj.isBoarderSquare = True
 
@@ -164,14 +165,31 @@ class gameMap(object):
                   for idy, y in enumerate(range(0, MAP_WIDTH, self.blockSize)):
                         #print(idy)
                         rect = pygame.Rect(x, y, self.blockSize, self.blockSize)
-                        #draw boarder square background first
-                        if self.mapArray[idx][idy][0].isBoarderSquare == True:
-                              if self.mapArray[idx][idy][0].TEAM:
+                        currentGridObj = self.mapArray[idx][idy][0]
+                        #draw boarder squares first
+                        if currentGridObj.isBoarderSquare == True:
+                              if currentGridObj.TEAM:
                                     pygame.draw.rect(display, BLUE, rect)
                               else:
                                     pygame.draw.rect(display, RED, rect)
-                        if self.mapArray[idx][idy][0].isBattleSquare == True: #0 is to get thing from list size of 1 this language sucks
+
+                        #draw in battle squares next
+                        if currentGridObj.isBattleSquare == True: #0 is to get thing from list size of 1 this language sucks
                               pygame.draw.rect(display, GREEN, rect, self.blockSize, self.blockSize) #makes a circle 
+
+                        #draw in units
+                        if currentGridObj.hasUnits():
+                              unitList = currentGridObj.getUnits()
+                              hasDrawnOPFOR = False
+                              offset = self.blockSize/2
+                              for e in unitList:
+                                    if not e.TEAM and not hasDrawnOPFOR: #draw larger OPFOR circle first, and only draw once
+                                          pygame.draw.circle(display, RED, [x+offset, y+offset], 8)
+                                          hasDrawnOPFOR = True
+                                    else:
+                                          pygame.draw.circle(display, BLUE, [x+offset, y+offset], 5)
+
+                        #draw in everything else
                         else:
                               pygame.draw.rect(display, WHITE, rect, 1)
 
@@ -235,7 +253,6 @@ class gameMap(object):
                                     print(str(e.name) + " scored, but not on a battle square!")
 
             #TODO: do something with the dead units
-
       
       def getUnits(self):
             coordIntFight = []
@@ -258,25 +275,35 @@ class gameMap(object):
             return [coordIntFight, coordAll, coordBombers]
 
       def search(self, coord):
-            #create array to search``
+            #create array to search
             searchRadius = 6
             xSearchCoords = range(coord[0]-6,coord[0]+6)
             ySearchCoords = range(coord[1]-6,coord[1]+6)
             searchCoords = [range()]
 
+      def addUnit(self, name, coord, TEAM):
+            #self.mapArray[1][1][0].addUnits("Interceptor", True)
+            try:
+                  self.mapArray[coord[0]][coord[1]][0].addUnits(name, TEAM)
+            except Exception as e:
+                  print(e)
+
+#Create Map object (1)
 #mainMap = gameMap(50) #USE FOR 12 x 12 GRID
 mainMap = gameMap(20)
 
+#initialize text input object - reference https://github.com/Nearoo/pygame-text-input
+textinput = pygame_textinput.TextInputVisualizer(font_object=arial, font_color=[255, 255, 255])
 
-
+#all graphics in this function
 def draw_game_window():
-      #All code for drawing objects to the screen
       display.fill((0,0,0))
 
       #set text input fields
-      bomber_text = comic_sans.render('AAAAAAAAAAAa', False, (255, 255, 255))
+      bomber_text = arial.render('Name,number,x,y,TEAM(T/F)', False, (200, 120, 200))
 
-      display.blit(bomber_text, (int(1000),int(300)))
+      display.blit(bomber_text, (625,50))
+      display.blit(textinput.surface, (625, 75))
 
       #Later can add clause to only call this once other client has connected
       #data = client.recv(6000).decode()
@@ -284,33 +311,53 @@ def draw_game_window():
 
       try:
           #pygame.draw.rect(display, GREEN, (float(line.split(",")[0]), float(line.split(",")[1]), 50, 50))
-          y=1
+          kajshgdf=1
       except Exception as e:
           print(e)
 
       mainMap.drawGrid()
-      #mainMap.getUnits()
-      #player.draw()
-
       
       pygame.display.update()
       clock.tick(60)
 
+#main update loop
 while True:
-      #Main Loop
-
-      draw_game_window()
-      #try:
-      #      display.blit(bomber_text, (int(1000),int(300)))
-      #except Exception as e:
-      #      print("help!") 
+      draw_game_window() #all drawing happens here
 
       #client.send((bytes(str("hello!").encode())))
       
-      for event in pygame.event.get():
+      events = pygame.event.get()
+
+      textinput.update(events)
+      #print(textinput.value)
+      
+      for event in events:
+            
             if event.type == pygame.QUIT:
                   pygame.display.quit()
                   pygame.QUIT
                   quit()
+
+            #evaluate keyboard input and update units
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                  capturedInput = textinput.value
+                  #Expected input 'Name, number, x, y, TEAM'
+                  try:
+                        capturedInput = capturedInput.split(',') #split into array
+                  except Exception as e:
+                        print(e)
+                  for i in range(int(capturedInput[1])):
+                        print(capturedInput[4])
+                        if capturedInput[4] == "T":
+                              mainMap.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], True)
+                              print(capturedInput[0] + " added!")
+                        elif capturedInput[4] == "F":
+                              mainMap.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], False)
+                              print(capturedInput[0] + " added!")
+                        else:
+                              print("fuck")
+                  
+                  #recalculate battle odds
+                  mainMap.calcBattle()
 
 
