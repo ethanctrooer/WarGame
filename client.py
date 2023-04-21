@@ -182,12 +182,15 @@ class gameMap(object):
                               unitList = currentGridObj.getUnits()
                               hasDrawnOPFOR = False
                               offset = self.blockSize/2
+                              #below could be so much better
                               for e in unitList:
                                     if not e.TEAM and not hasDrawnOPFOR: #draw larger OPFOR circle first, and only draw once
                                           pygame.draw.circle(display, RED, [x+offset, y+offset], 8)
                                           hasDrawnOPFOR = True
-                                    else:
+                                    elif e.TEAM:
                                           pygame.draw.circle(display, BLUE, [x+offset, y+offset], 5)
+                                    else:
+                                          continue
 
                         #draw in everything else
                         else:
@@ -207,6 +210,7 @@ class gameMap(object):
                   return False
 
       #TODO: move to server side
+      #TODO: change order to match C/Maj. Baschy's code
       def calcBattle(self):
             airUnits = self.getUnits() #returns Unit objects
 
@@ -266,6 +270,9 @@ class gameMap(object):
                               for e in units:
                                     #format "NAME" [STATS] bool TEAM
                                     stats = e.getStats()
+                                    if(e.x == 5 and e.y == 5):
+                                          print(e.name)
+                                          print(e.TEAM)
                                     if (stats[0] == "Interceptor") | (stats[0] == "Fighter"):
                                           coordIntFight.append(e) #add int, fighter
                                     else:
