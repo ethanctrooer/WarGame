@@ -1,6 +1,7 @@
 import numpy as np
 import pygame, threading, socket
 from pygame.locals import *
+import pygame_textinput
 
 #Initialize the client
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -8,9 +9,15 @@ client.connect(("127.0.0.1", 5050))
 
 #Initialize pygame
 pygame.init()
+pygame.font.init()
+#comic_sans = pygame.font.SysFont('Comic Sans MS', 100)
+comic_sans = pygame.font.SysFont('None', 100)
 
-WINDOW_WIDTH = 600
+#for entire 
+WINDOW_WIDTH = 900
 WINDOW_HEIGHT = 600
+MAP_WIDTH = 600
+MAP_HEIGHT = 600
 #WINDOW_WIDTH = 100
 #WINDOW_HEIGHT = 100
 
@@ -117,7 +124,7 @@ class gridSquare(object):
 class gameMap(object):
 
       def __init__(self, blockSize):
-            self.numBlocks = int(WINDOW_WIDTH / blockSize)
+            self.numBlocks = int(MAP_WIDTH / blockSize)
             print(self.numBlocks)
             self.blockSize = blockSize #change size of map with either blocksize or windowsize
             self.mapArray = np.array([ [[gridSquare(True, False, False, [], i, j),] for j in range(self.numBlocks)] for i in range(self.numBlocks) ])
@@ -152,9 +159,9 @@ class gameMap(object):
 
       def drawGrid(self):
             #blockSize = 20 #Set the size of the grid block - former, no self reference
-            for idx, x in enumerate(range(0, WINDOW_WIDTH, self.blockSize)):
+            for idx, x in enumerate(range(0, MAP_WIDTH, self.blockSize)):
                   #print(idx)
-                  for idy, y in enumerate(range(0, WINDOW_WIDTH, self.blockSize)):
+                  for idy, y in enumerate(range(0, MAP_WIDTH, self.blockSize)):
                         #print(idy)
                         rect = pygame.Rect(x, y, self.blockSize, self.blockSize)
                         #draw boarder square background first
@@ -258,11 +265,18 @@ class gameMap(object):
             searchCoords = [range()]
 
 #mainMap = gameMap(50) #USE FOR 12 x 12 GRID
-mainMap = gameMap(10)
+mainMap = gameMap(20)
+
+
 
 def draw_game_window():
       #All code for drawing objects to the screen
       display.fill((0,0,0))
+
+      #set text input fields
+      bomber_text = comic_sans.render('AAAAAAAAAAAa', False, (255, 255, 255))
+
+      display.blit(bomber_text, (int(1000),int(300)))
 
       #Later can add clause to only call this once other client has connected
       #data = client.recv(6000).decode()
@@ -286,6 +300,10 @@ while True:
       #Main Loop
 
       draw_game_window()
+      #try:
+      #      display.blit(bomber_text, (int(1000),int(300)))
+      #except Exception as e:
+      #      print("help!") 
 
       #client.send((bytes(str("hello!").encode())))
       
