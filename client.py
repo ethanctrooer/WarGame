@@ -24,6 +24,7 @@ MAP_HEIGHT = 600
 BLACK = (0, 0, 0)
 WHITE = (200, 200, 200)
 BLUE = (45, 103, 255)
+GRID_BLUE = (13,80,189)
 RED = (255, 45, 45)
 GREEN = (0, 255, 0)
 
@@ -169,7 +170,7 @@ class gameMap(object):
                         #draw boarder squares first
                         if currentGridObj.isBoarderSquare == True:
                               if currentGridObj.TEAM:
-                                    pygame.draw.rect(display, BLUE, rect)
+                                    pygame.draw.rect(display, GRID_BLUE, rect)
                               else:
                                     pygame.draw.rect(display, RED, rect)
 
@@ -179,18 +180,32 @@ class gameMap(object):
 
                         #draw in units
                         if currentGridObj.hasUnits():
-                              unitList = currentGridObj.getUnits()
-                              hasDrawnOPFOR = False
+                              #unitList = currentGridObj.getUnits().sort(key=lambda a: a.TEAM)
+
+                              #Sort so OPFOR units come first
+                              units = currentGridObj.getUnits()
+                              OPFORunits = []
+                              BLUFORunits = []
+                              for e in units:
+                                    if e.TEAM:
+                                          BLUFORunits.append(e)
+                                    else:
+                                          OPFORunits.append(e)
+                              unitList = OPFORunits + BLUFORunits
+
+                              #set offset so circle appears in the middle of the grid square
                               offset = self.blockSize/2
-                              #below could be so much better
+
+                              #this could be so much better
+                              hasDrawnOPFOR, hasDrawnBLUFOR = False, False
                               for e in unitList:
-                                    if not e.TEAM and not hasDrawnOPFOR: #draw larger OPFOR circle first, and only draw once
+                                    if hasDrawnOPFOR and hasDrawnBLUFOR: #only draw each once
+                                          break
+                                    if not e.TEAM: #draw larger OPFOR circle first
                                           pygame.draw.circle(display, RED, [x+offset, y+offset], 8)
                                           hasDrawnOPFOR = True
-                                    elif e.TEAM:
-                                          pygame.draw.circle(display, BLUE, [x+offset, y+offset], 5)
                                     else:
-                                          continue
+                                          pygame.draw.circle(display, BLUE, [x+offset, y+offset], 5)
 
                         #draw in everything else
                         else:
