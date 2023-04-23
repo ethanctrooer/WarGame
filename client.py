@@ -184,8 +184,7 @@ class gameMap(object):
 
                               #Sort so OPFOR units come first, done to fix bug where red circle drawn on top of blue circle
                               units = currentGridObj.getUnits()
-                              OPFORunits = []
-                              BLUFORunits = []
+                              OPFORunits, BLUFORunits = [], []
                               for e in units:
                                     if e.TEAM:
                                           BLUFORunits.append(e)
@@ -207,7 +206,7 @@ class gameMap(object):
                                     else:
                                           pygame.draw.circle(display, BLUE, [x+offset, y+offset], 5)
 
-                        #draw in everything else
+                        #draw in all other gridObjects (white borders)
                         else:
                               pygame.draw.rect(display, WHITE, rect, 1)
 
@@ -215,9 +214,8 @@ class gameMap(object):
       
       #stolen from https://www.geeksforgeeks.org/find-if-a-point-lies-inside-or-on-circle/
       def isInside(self, circle_x, circle_y, rad, x, y):
-            # Compare radius of circle
-            # with distance of its center
-            # from given point
+            # Compare radius of circle with distance of 
+            # its center from given point
             if ((x - circle_x) * (x - circle_x) +
                   (y - circle_y) * (y - circle_y) <= rad * rad):
                   return True
