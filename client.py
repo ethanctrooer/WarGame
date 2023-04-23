@@ -182,7 +182,7 @@ class gameMap(object):
                         if currentGridObj.hasUnits():
                               #unitList = currentGridObj.getUnits().sort(key=lambda a: a.TEAM)
 
-                              #Sort so OPFOR units come first
+                              #Sort so OPFOR units come first, done to fix bug where red circle drawn on top of blue circle
                               units = currentGridObj.getUnits()
                               OPFORunits = []
                               BLUFORunits = []
