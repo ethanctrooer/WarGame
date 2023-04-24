@@ -294,13 +294,6 @@ class gameMap(object):
 
             return [coordIntFight, coordAll, coordBombers]
 
-      def search(self, coord):
-            #create array to search
-            searchRadius = 6
-            xSearchCoords = range(coord[0]-6,coord[0]+6)
-            ySearchCoords = range(coord[1]-6,coord[1]+6)
-            searchCoords = [range()]
-
       def addUnit(self, name, coord, TEAM):
             #self.mapArray[1][1][0].addUnits("Interceptor", True)
             try:
