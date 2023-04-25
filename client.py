@@ -1,11 +1,14 @@
 import numpy as np
-import pygame, threading, socket
+import pygame, threading, socket, pickle
 from pygame.locals import *
 import pygame_textinput
+from Unit import Unit
 
 #Initialize the client
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(("127.0.0.1", 5050))
+HOST = "127.0.0.1" #or localhost
+PORT = 5050
+client.connect((HOST, PORT))
 
 #Initialize pygame
 pygame.init()
@@ -31,57 +34,7 @@ GREEN = (0, 255, 0)
 display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
 
-#Unit type object
-class Unit(object):
-
-      def __init__(self, name, TEAM, x, y):
-            self.name = name
-            self.TEAM = TEAM #TRUE is BLUFOR. FALSE is OPFOR.
-            self.x = x
-            self.y = y
-
-            self.alive = True
-            self.defChecks = 0
-
-            #format [Defense Stat, Offense Stat (999 for N/A), Range]
-            classDict = {
-                  "Interceptor" : [30, 999, 6],
-                  "Fighter" : [60, 999, 3],
-                  "Multirole-B" : [60, 70, 0, 1],
-                  "Multirole-F" : [60, 70, 3],
-                  "CAS" : [40, 70, 0],
-                  "Stealth-B" : [80, 70, 0, 2],
-                  "Gunship" : [20, 100, 0, 2],
-                  "SEAD" : [80, 80, 6],
-                  "SR" : [0, 100, 3],
-                  "SAM" : [0, 999, 2]
-            }
-
-            try:
-                  self.myStats = classDict[self.name]
-                  print(self.myStats)
-            except Exception as e:
-                  print(e)
-
-      def getStats(self):
-            return [self.name, self.myStats, self.TEAM]
-      
-      def getCoords(self):
-            return [self.x, self.y]
-      
-      def getDefChecks(self):
-            return self.defChecks
-      
-      def isAlive(self):
-            return self.alive
-      
-      def addDefCheck(self):
-            self.defChecks += 1
-            print(self.name + " currently has " + str(self.defChecks) + " defense checks.")
-
-      def die(self):
-            self.alive = False
-            print(self.name + " died!")
+#Unit type object - moved to seperate file
 
 #Object to track what's in each grid square
 class gridSquare(object):
@@ -308,6 +261,19 @@ mainMap = gameMap(20)
 #initialize text input object - reference https://github.com/Nearoo/pygame-text-input
 textinput = pygame_textinput.TextInputVisualizer(font_object=arial, font_color=[255, 255, 255])
 
+class dataToSend(object):
+
+      def __init__(self):
+            self.units = []
+
+      def addUnit(self, name, coord, TEAM):
+            try:
+                  x, y = coord[0], coord[1]
+                  self.units.append(Unit(name, TEAM, x, y))
+            except Exception as e:
+                  print(e)
+
+
 #all graphics in this function
 def draw_game_window():
       display.fill((0,0,0))
@@ -334,10 +300,19 @@ def draw_game_window():
       clock.tick(60)
 
 #main update loop
+MAX_UDP_SIZE = 65507  # https://en.wikipedia.org/wiki/User_Datagram_Protocol
 while True:
       draw_game_window() #all drawing happens here
 
       #client.send((bytes(str("hello!").encode())))
+      #data = pickle.dumps(mainMap)
+      
+      #print(len(data))
+      #print(pickle.loads(test))
+
+      #if len(data) > MAX_UDP_SIZE:
+      #      raise ValueError('Message too large')
+      #client.send(data)
       
       events = pygame.event.get()
 
@@ -353,6 +328,7 @@ while True:
 
             #evaluate keyboard input and update units
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                  dataSent = dataToSend() #initialize data to send object
                   capturedInput = textinput.value
                   #Expected input 'Name, number, x, y, TEAM'
                   try:
@@ -364,11 +340,19 @@ while True:
                         if capturedInput[4] == "T":
                               mainMap.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], True)
                               print(capturedInput[0] + " added!")
+                              dataSent.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], True) #add unit to data to send object
                         elif capturedInput[4] == "F":
                               mainMap.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], False)
                               print(capturedInput[0] + " added!")
+                              dataSent.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], False) #add unit to data to send object
                         else:
                               print("fuck")
+
+                  data = pickle.dumps(dataSent)
+                  print(str(len(data)) + " data length")
+                  if len(data) > MAX_UDP_SIZE:
+                        raise ValueError('Message too large')
+                  client.send(data)
                   
                   #recalculate battle odds
                   mainMap.calcBattle()

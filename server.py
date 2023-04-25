@@ -1,7 +1,10 @@
-import socket, threading, random, time
+import socket, threading, random, time, pickle
+from Unit import Unit
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(("127.0.0.1", 5050))
+HOST = "127.0.0.1" #or localhost
+PORT = 5050
+server.bind((HOST, PORT))
 
 x = 50
 
@@ -11,6 +14,18 @@ player_1 = None
 player_2 = None
 
 players = []
+
+class dataToSend(object):
+
+      def __init__(self):
+            self.units = []
+
+      def addUnit(self, name, coord, TEAM):
+            try:
+                  x, y = coord[0], coord[1]
+                  self.units.append(Unit(name, TEAM, x, y))
+            except Exception as e:
+                  print(e)
 
 def handle_client(conn, addr, x):
       global has_first_player_connected
@@ -37,8 +52,15 @@ def handle_client(conn, addr, x):
             
       time.sleep(1)
       
+      UDP_MAX = 2 ** 16 - 1
       while connected:
-            data = conn.recv(6000)
+
+            data = conn.recv(UDP_MAX)
+
+            #print(data)
+            unpickled_data = pickle.loads(data)
+            print(unpickled_data)
+
             """
             for i in range(len(players)):
                   try:
