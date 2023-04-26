@@ -3,6 +3,9 @@ import pygame, threading, socket, pickle
 from pygame.locals import *
 import pygame_textinput
 from Unit import Unit
+from gridSquare import gridSquare
+import select
+import queue
 
 #Initialize the client
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,45 +37,11 @@ GREEN = (0, 255, 0)
 display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
 
+data_queue = queue.Queue()
+
 #Unit type object - moved to seperate file
 
-#Object to track what's in each grid square
-class gridSquare(object):
-      def __init__(self, TEAM, isBattleSquare, isBoarderSquare, currentUnits, x, y):
-            self.TEAM = TEAM #BLUFOR is TRUE. OPFOR is FALSE.
-            self.isBattleSquare = isBattleSquare #t/f
-            self.isBoarderSquare = isBoarderSquare
-            self.currentUnits = currentUnits #array of current units present
-            self.x = x
-            self.y = y
-            self.BLU_points = 0
-            self.OP_points = 0
-
-      def getBattleStatus(self):
-            return self.isBattleSquare
-      
-      def getCoord(self):
-            coord = [self.x,self.y]
-            return(coord)
-      
-      def getUnits(self):
-            return self.currentUnits
-      
-      def addUnits(self, unitName, TEAM):
-            self.currentUnits.append(Unit(unitName, TEAM, self.x, self.y))
-
-      def hasUnits(self):
-            if len(self.currentUnits) > 0:
-                  return True
-            return False
-      
-      def addPoints(self, TEAM, points):
-            if TEAM:
-                  self.BLU_points += points
-                  print("BLUFOR has scored " + str(points) + " point(s)!")
-            else:
-                  self.OP_points += points
-                  print("OPFOR has scored " + str(points) + " point(s)!")
+#Object to track what's in each grid square - moved to seperate file
 
 #should only be one - object for the game map & contains battle calculations
 class gameMap(object):
@@ -299,20 +268,28 @@ def draw_game_window():
       pygame.display.update()
       clock.tick(60)
 
+#https://stackoverflow.com/questions/20289981/python-sockets-stop-recv-from-hanging
+def data_receiver():
+         #Assuming self.sock exists
+         data = client.recv(1024)#.decode("utf-8")
+         print("DATA: ")
+         print(data)
+         data_queue.put(data)
+
+         #edit the data in any way necessary here
+         
+data_receiver = threading.Thread(target=data_receiver)
+data_receiver.start()
+
 #main update loop
 MAX_UDP_SIZE = 65507  # https://en.wikipedia.org/wiki/User_Datagram_Protocol
 while True:
       draw_game_window() #all drawing happens here
 
-      #client.send((bytes(str("hello!").encode())))
-      #data = pickle.dumps(mainMap)
-      
-      #print(len(data))
-      #print(pickle.loads(test))
-
-      #if len(data) > MAX_UDP_SIZE:
-      #      raise ValueError('Message too large')
-      #client.send(data)
+      try:
+            data = data_queue.get_nowait()
+      except queue.Empty:
+            pass
       
       events = pygame.event.get()
 
@@ -326,6 +303,11 @@ while True:
                   pygame.QUIT
                   quit()
 
+            #raw_recv_data = client.recv(8192)
+            #print(raw_recv_data)
+            #unpickled_data = pickle.loads(raw_recv_data) #load pickeled data
+            
+            #should move this elsewhere
             #evaluate keyboard input and update units
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                   dataSent = dataToSend() #initialize data to send object

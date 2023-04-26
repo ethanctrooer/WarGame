@@ -1,5 +1,6 @@
 import socket, threading, random, time, pickle
 from Unit import Unit
+from datetime import datetime
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 HOST = "127.0.0.1" #or localhost
@@ -55,27 +56,23 @@ def handle_client(conn, addr, x):
       UDP_MAX = 2 ** 16 - 1
       while connected:
 
-            data = conn.recv(UDP_MAX)
+            data = conn.recv(UDP_MAX) #each data packet from one user
 
             #print(data)
             unpickled_data = pickle.loads(data)
             print(unpickled_data)
 
-            """
-            for i in range(len(players)):
-                  try:
-                        for j in range(len(players)):
-                              if i != j:
-                                    players[j].send(bytes(data))
-                  except Exception as e:
-                        print("hiasdf")
-                        print(e)
-                        pass
-            """
+            currenttime = str(datetime.now().strftime("%H:%M:%S"))
+            #players[0].send(bytes(currenttime))
+            
+            #for e in players:
+            #      e.send(bytes(currenttime.encode()))
+            conn.send(currenttime.encode())
 
             if is_player_1:
                   try:
-                        players[1].send(bytes(data))
+                        players[1].send(bytes(data)) #send player 1's [0] data straight to player 2 [1]
+                        #players[0].send(bytes(currenttime))
                   except:
                         pass
 
