@@ -10,16 +10,16 @@ class gameMap(object):
             self.mapArray = np.array([ [[gridSquare(True, False, False, [], i, j),] for j in range(self.numBlocks)] for i in range(self.numBlocks) ])
 
             #test units
-            self.mapArray[1][1][0].addUnits("Interceptor", True)
-            self.mapArray[1][2][0].addUnits("Interceptor", False)
-            self.mapArray[1][2][0].addUnits("Interceptor", True)
+            #self.mapArray[1][1][0].addUnits("Interceptor", True)
+            #self.mapArray[1][2][0].addUnits("Interceptor", False)
+            #self.mapArray[1][2][0].addUnits("Interceptor", True)
 
-            self.mapArray[3][15][0].addUnits("Interceptor", False)
-            self.mapArray[3][17][0].addUnits("Gunship", True)
+            #self.mapArray[3][15][0].addUnits("Interceptor", False)
+            #self.mapArray[3][17][0].addUnits("Gunship", True)
 
-            self.mapArray[15][2][0].addUnits("Interceptor", False)
-            self.mapArray[20][2][0].addUnits("Fighter", False)
-            self.mapArray[17][2][0].addUnits("Gunship", True)
+            #self.mapArray[15][2][0].addUnits("Interceptor", False)
+            #self.mapArray[20][2][0].addUnits("Fighter", False)
+            #self.mapArray[17][2][0].addUnits("Gunship", True)
 
             battleSquares = 3 #set number of battle squares
             xCoordBoarder = int(self.numBlocks/2) #set x coordinate of boarder, just in the middle right now

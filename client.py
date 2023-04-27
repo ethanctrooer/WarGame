@@ -7,6 +7,8 @@ from gridSquare import gridSquare
 import select
 import queue
 from gameMap import gameMap
+import sys
+from dataToSend import dataToSend
 
 #Initialize the client
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -106,19 +108,6 @@ mainMap = gameMap(20, MAP_WIDTH)
 #initialize text input object - reference https://github.com/Nearoo/pygame-text-input
 textinput = pygame_textinput.TextInputVisualizer(font_object=arial, font_color=[255, 255, 255])
 
-class dataToSend(object):
-
-      def __init__(self):
-            self.units = []
-
-      def addUnit(self, name, coord, TEAM):
-            try:
-                  x, y = coord[0], coord[1]
-                  self.units.append(Unit(name, TEAM, x, y))
-            except Exception as e:
-                  print(e)
-
-
 #all graphics in this function
 def draw_game_window():
       display.fill((0,0,0))
@@ -153,8 +142,11 @@ def data_receiver():
          data_queue.put(data)
 
          #edit the data in any way necessary here
-         
-data_receiver = threading.Thread(target=data_receiver)
+
+#this thread listenes for data from the server to not clog main thread with .recv
+#daemon causes the thread to die when the main thread does
+#without daemon thread (& program) continues running after window close
+data_receiver = threading.Thread(target=data_receiver, daemon = True) 
 data_receiver.start()
 
 #main update loop
@@ -179,6 +171,7 @@ while True:
       for event in events:
             
             if event.type == pygame.QUIT:
+                  print("QUIT NOW")
                   pygame.display.quit()
                   pygame.QUIT
                   quit()

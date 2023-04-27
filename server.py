@@ -1,6 +1,8 @@
 import socket, threading, random, time, pickle
 from Unit import Unit
 from datetime import datetime
+from dataToSend import dataToSend
+#note: Unit.py is required for many of the custom objects, poor coding style
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 HOST = "127.0.0.1" #or localhost
@@ -16,18 +18,7 @@ player_2 = None
 
 players = []
 
-class dataToSend(object):
-
-      def __init__(self):
-            self.units = []
-
-      def addUnit(self, name, coord, TEAM):
-            try:
-                  x, y = coord[0], coord[1]
-                  self.units.append(Unit(name, TEAM, x, y))
-            except Exception as e:
-                  print(e)
-
+#listening & sending thread, unique to each connection
 def handle_client(conn, addr, x):
       global has_first_player_connected
       print(f"Client connected on {conn}")
@@ -65,7 +56,7 @@ def handle_client(conn, addr, x):
             print(unpickled_data)
 
             currenttime = str(datetime.now().strftime("%H:%M:%S"))
-            
+
             conn.send(bytes(("message recieved OK!").encode()))
 
             if is_player_1:
