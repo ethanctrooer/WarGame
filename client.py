@@ -6,6 +6,7 @@ from Unit import Unit
 from gridSquare import gridSquare
 import select
 import queue
+from gameMap import gameMap
 
 #Initialize the client
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -44,188 +45,63 @@ data_queue = queue.Queue()
 #Object to track what's in each grid square - moved to seperate file
 
 #should only be one - object for the game map & contains battle calculations
-class gameMap(object):
 
-      def __init__(self, blockSize):
-            self.numBlocks = int(MAP_WIDTH / blockSize)
-            #print(self.numBlocks)
-            self.blockSize = blockSize #change size of map with either blocksize or windowsize
-            self.mapArray = np.array([ [[gridSquare(True, False, False, [], i, j),] for j in range(self.numBlocks)] for i in range(self.numBlocks) ])
-
-            #test units
-            self.mapArray[1][1][0].addUnits("Interceptor", True)
-            self.mapArray[1][2][0].addUnits("Interceptor", False)
-            self.mapArray[1][2][0].addUnits("Interceptor", True)
-
-            self.mapArray[3][15][0].addUnits("Interceptor", False)
-            self.mapArray[3][17][0].addUnits("Gunship", True)
-
-            self.mapArray[15][2][0].addUnits("Interceptor", False)
-            self.mapArray[20][2][0].addUnits("Fighter", False)
-            self.mapArray[17][2][0].addUnits("Gunship", True)
-
-            battleSquares = 3 #set number of battle squares
-            xCoordBoarder = int(self.numBlocks/2) #set x coordinate of boarder, just in the middle right now
-            randBattleCities = np.random.randint(0, len(self.mapArray[xCoordBoarder][:]), battleSquares).tolist() #sometimes only generates 2 for some reason, good bug
-
-            #add spacing of 1 between battle cities - doesn't work lmao
-            while 1 in np.diff(randBattleCities):
-                  randBattleCities = np.random.randint(0, len(self.mapArray[xCoordBoarder][:]), battleSquares).tolist()
-
-            #set gridObj values: boarder cities & set 3 random cities to battle squares
-            for id, e in enumerate(self.mapArray[xCoordBoarder][:]): #select column at boarder x coordinate
-                  gridObj = e[0] #select grid square
-                  if id in randBattleCities:
-                        gridObj.isBattleSquare = True #set battle squares
-                  gridObj.isBoarderSquare = True
-
-            self.calcBattle()
-
-      def drawGrid(self):
-            #blockSize = 20 #Set the size of the grid block - former, no self reference
-            for idx, x in enumerate(range(0, MAP_WIDTH, self.blockSize)):
-                  #print(idx)
-                  for idy, y in enumerate(range(0, MAP_WIDTH, self.blockSize)):
-                        #print(idy)
-                        rect = pygame.Rect(x, y, self.blockSize, self.blockSize)
-                        currentGridObj = self.mapArray[idx][idy][0]
-                        #draw boarder squares first
-                        if currentGridObj.isBoarderSquare == True:
-                              if currentGridObj.TEAM:
-                                    pygame.draw.rect(display, GRID_BLUE, rect)
-                              else:
-                                    pygame.draw.rect(display, RED, rect)
-
-                        #draw in battle squares next
-                        if currentGridObj.isBattleSquare == True: #0 is to get thing from list size of 1 this language sucks
-                              pygame.draw.rect(display, GREEN, rect, self.blockSize, self.blockSize) #makes a circle 
-
-                        #draw in units
-                        if currentGridObj.hasUnits():
-                              #unitList = currentGridObj.getUnits().sort(key=lambda a: a.TEAM)
-
-                              #Sort so OPFOR units come first, done to fix bug where red circle drawn on top of blue circle
-                              units = currentGridObj.getUnits()
-                              OPFORunits, BLUFORunits = [], []
-                              for e in units:
-                                    if e.TEAM:
-                                          BLUFORunits.append(e)
-                                    else:
-                                          OPFORunits.append(e)
-                              unitList = OPFORunits + BLUFORunits
-
-                              #set offset so circle appears in the middle of the grid square
-                              offset = self.blockSize/2
-
-                              #this could be so much better
-                              hasDrawnOPFOR, hasDrawnBLUFOR = False, False
-                              for e in unitList:
-                                    if hasDrawnOPFOR and hasDrawnBLUFOR: #only draw each once
-                                          break
-                                    if not e.TEAM: #draw larger OPFOR circle first
-                                          pygame.draw.circle(display, RED, [x+offset, y+offset], 8)
-                                          hasDrawnOPFOR = True
-                                    else:
-                                          pygame.draw.circle(display, BLUE, [x+offset, y+offset], 5)
-
-                        #draw in all other gridObjects (white borders)
+def drawGrid(game_map): #game_map is gameMap obj
+      #blockSize = 20 #Set the size of the grid block - former, no self reference
+      for idx, x in enumerate(range(0, MAP_WIDTH, game_map.blockSize)):
+            #print(idx)
+            for idy, y in enumerate(range(0, MAP_WIDTH, game_map.blockSize)):
+                  #print(idy)
+                  rect = pygame.Rect(x, y, game_map.blockSize, game_map.blockSize)
+                  currentGridObj = game_map.mapArray[idx][idy][0]
+                  #draw boarder squares first
+                  if currentGridObj.isBoarderSquare == True:
+                        if currentGridObj.TEAM:
+                              pygame.draw.rect(display, GRID_BLUE, rect)
                         else:
-                              pygame.draw.rect(display, WHITE, rect, 1)
+                              pygame.draw.rect(display, RED, rect)
 
-                        #print(self.mapArray[idx][idy][0].getCoord())
-      
-      #stolen from https://www.geeksforgeeks.org/find-if-a-point-lies-inside-or-on-circle/
-      def isInside(self, circle_x, circle_y, rad, x, y):
-            # Compare radius of circle with distance of 
-            # its center from given point
-            if ((x - circle_x) * (x - circle_x) +
-                  (y - circle_y) * (y - circle_y) <= rad * rad):
-                  return True
-            else:
-                  return False
+                  #draw in battle squares next
+                  if currentGridObj.isBattleSquare == True: #0 is to get thing from list size of 1 this language sucks
+                        pygame.draw.rect(display, GREEN, rect, game_map.blockSize, game_map.blockSize) #makes a circle 
 
-      #TODO: move to server side
-      #TODO: change order to match C/Maj. Baschy's code
-      def calcBattle(self):
-            airUnits = self.getUnits() #returns Unit objects
+                  #draw in units
+                  if currentGridObj.hasUnits():
+                        #unitList = currentGridObj.getUnits().sort(key=lambda a: a.TEAM)
 
-            #NOTE: implement interceptor/fighter checks before bombers?
-            #Add up all defense checks for in range units
-            for e in airUnits[0]: #Unit objects with all interceptors and fighters
-                  e_coord = e.getCoords()
-
-                  for j in airUnits[1]: #Unit objects with all bombers #THERE IS OVERLAP CURRENTLY
-                        j_coord = j.getCoords()
-
-                        if (e != j) and (e.getStats()[2] != j.getStats()[2]): #if e is not the same unit as j and they are not on the same team
-                              radius = e.getStats()[1][2] #get coordinates of interceptor/fighter
-                              x1, y1 = e_coord[0], e_coord[1]
-                              x2, y2 = j_coord[0], j_coord[1]
-
-                              #check if j (air unit) is inside fighter/interceptor radius
-                              if self.isInside(x1, y1, radius, x2, y2):
-                                    #add defense check
-                                    j.addDefCheck()
-
-            #Carry out defense checks
-            for j in airUnits[1]: #this list contains all the air units in combat
-                  if j.getDefChecks() > 0:
-                        stats = j.getStats()[1]
-                        def_stat = stats[0]
-                        for i in range(j.getDefChecks()):
-                              rand = np.random.randint(0, 100)
-                              if def_stat < rand:
-                                    #print(str(def_stat) + " " + str(rand))
-                                    j.die()
-
-            #Carry out bombing runs
-            for e in airUnits[2]:
-                  if e.isAlive(): #only check if unit is still alive
-                        TEAM = e.getStats()[2]
-                        stats = e.getStats()[1]
-                        attk_stat = stats[1]
-                        if attk_stat > np.random.randint(0,100):
-                              unit_coord = e.getCoords()
-                              if self.mapArray[unit_coord[0]][unit_coord[1]][0].isBattleSquare == True:
-                                    self.mapArray[unit_coord[0]][unit_coord[1]][0].addPoints(TEAM, stats[3]) #add points to grid Object
+                        #Sort so OPFOR units come first, done to fix bug where red circle drawn on top of blue circle
+                        units = currentGridObj.getUnits()
+                        OPFORunits, BLUFORunits = [], []
+                        for e in units:
+                              if e.TEAM:
+                                    BLUFORunits.append(e)
                               else:
-                                    print(str(e.name) + " scored, but not on a battle square!")
+                                    OPFORunits.append(e)
+                        unitList = OPFORunits + BLUFORunits
 
-            #TODO: do something with the dead units
-      
-      def getUnits(self):
-            coordIntFight = []
-            coordBombers = []
-            coordAll = [] #need to add more for other forces
-            for x in self.mapArray:
-                  for y in x:
-                        gridObj = y[0]
-                        if gridObj.hasUnits():
-                              units = gridObj.getUnits()
-                              for e in units:
-                                    #format "NAME" [STATS] bool TEAM
-                                    stats = e.getStats()
-                                    if(e.x == 5 and e.y == 5):
-                                          print(e.name)
-                                          print(e.TEAM)
-                                    if (stats[0] == "Interceptor") | (stats[0] == "Fighter"):
-                                          coordIntFight.append(e) #add int, fighter
-                                    else:
-                                          coordBombers.append(e) #add bombers
-                                    coordAll.append(e) #add all int, fight, and bomb
+                        #set offset so circle appears in the middle of the grid square
+                        offset = game_map.blockSize/2
 
-            return [coordIntFight, coordAll, coordBombers]
+                        #this could be so much better
+                        hasDrawnOPFOR, hasDrawnBLUFOR = False, False
+                        for e in unitList:
+                              if hasDrawnOPFOR and hasDrawnBLUFOR: #only draw each once
+                                    break
+                              if not e.TEAM: #draw larger OPFOR circle first
+                                    pygame.draw.circle(display, RED, [x+offset, y+offset], 8)
+                                    hasDrawnOPFOR = True
+                              else:
+                                    pygame.draw.circle(display, BLUE, [x+offset, y+offset], 5)
 
-      def addUnit(self, name, coord, TEAM):
-            #self.mapArray[1][1][0].addUnits("Interceptor", True)
-            try:
-                  self.mapArray[coord[0]][coord[1]][0].addUnits(name, TEAM)
-            except Exception as e:
-                  print(e)
+                  #draw in all other gridObjects (white borders)
+                  else:
+                        pygame.draw.rect(display, WHITE, rect, 1)
+
+                  #print(self.mapArray[idx][idy][0].getCoord())
 
 #Create Map object (1)
 #mainMap = gameMap(50) #USE FOR 12 x 12 GRID
-mainMap = gameMap(20)
+mainMap = gameMap(20, MAP_WIDTH)
 
 #initialize text input object - reference https://github.com/Nearoo/pygame-text-input
 textinput = pygame_textinput.TextInputVisualizer(font_object=arial, font_color=[255, 255, 255])
@@ -263,7 +139,7 @@ def draw_game_window():
       except Exception as e:
           print(e)
 
-      mainMap.drawGrid()
+      drawGrid(mainMap)
       
       pygame.display.update()
       clock.tick(60)
