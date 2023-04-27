@@ -271,7 +271,7 @@ def draw_game_window():
 #https://stackoverflow.com/questions/20289981/python-sockets-stop-recv-from-hanging
 def data_receiver():
          #Assuming self.sock exists
-         data = client.recv(1024)#.decode("utf-8")
+         data = client.recv(8192).decode()
          print("DATA: ")
          print(data)
          data_queue.put(data)
@@ -288,6 +288,7 @@ while True:
 
       try:
             data = data_queue.get_nowait()
+            print(data)
       except queue.Empty:
             pass
       
@@ -295,6 +296,9 @@ while True:
 
       textinput.update(events)
       #print(textinput.value)
+
+      #bogus code to run server in continuous loop
+      #client.send(bytes(("client OK!").encode()))
       
       for event in events:
             

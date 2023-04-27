@@ -35,27 +35,29 @@ def handle_client(conn, addr, x):
 
       if has_first_player_connected == False:
             #This code will run if this is the first player connecting
-            #To the server
-            conn.send(bytes("You Are Player 1".encode()))
+            #conn.send(bytes("You Are Player 1".encode())) 
+            #for some reason this breaks the code, might have some attribution to the if loop
             
             has_first_player_connected = True
 
             players.append(conn)
 
             is_player_1 = True
+
       else:
             #Player 2
-            conn.send(bytes("You Are Player 2".encode()))
+            #conn.send(bytes("You Are Player 2".encode()))
 
             players.append(conn)
 
             is_player_1 = False
-            
+      
       time.sleep(1)
       
       UDP_MAX = 2 ** 16 - 1
       while connected:
 
+            #this is a waiting call, will freeze thread until call recieved
             data = conn.recv(UDP_MAX) #each data packet from one user
 
             #print(data)
@@ -63,11 +65,8 @@ def handle_client(conn, addr, x):
             print(unpickled_data)
 
             currenttime = str(datetime.now().strftime("%H:%M:%S"))
-            #players[0].send(bytes(currenttime))
             
-            #for e in players:
-            #      e.send(bytes(currenttime.encode()))
-            conn.send(currenttime.encode())
+            conn.send(bytes(("message recieved OK!").encode()))
 
             if is_player_1:
                   try:
