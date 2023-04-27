@@ -1,4 +1,5 @@
 from Unit import Unit
+#object for data transfer between server & client
 
 class dataToSend(object):
 

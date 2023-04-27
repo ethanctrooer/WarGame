@@ -2,6 +2,7 @@ import socket, threading, random, time, pickle
 from Unit import Unit
 from datetime import datetime
 from dataToSend import dataToSend
+from gameMap import gameMap
 #note: Unit.py is required for many of the custom objects, poor coding style
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
