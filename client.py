@@ -48,6 +48,11 @@ data_queue = queue.Queue()
 
 #should only be one - object for the game map & contains battle calculations
 
+#Create Map object (1)
+#mainMap = gameMap(50) #USE FOR 12 x 12 GRID
+#initalize empty game map, client side stored
+mainMap = gameMap(20, MAP_WIDTH)
+
 def drawGrid(game_map): #game_map is gameMap obj
       #blockSize = 20 #Set the size of the grid block - former, no self reference
       for idx, x in enumerate(range(0, MAP_WIDTH, game_map.blockSize)):
@@ -56,8 +61,8 @@ def drawGrid(game_map): #game_map is gameMap obj
                   #print(idy)
                   rect = pygame.Rect(x, y, game_map.blockSize, game_map.blockSize)
                   currentGridObj = game_map.mapArray[idx][idy][0]
-                  #draw boarder squares first
-                  if currentGridObj.isBoarderSquare == True:
+                  #draw border squares first
+                  if currentGridObj.isBorderSquare == True:
                         if currentGridObj.TEAM:
                               pygame.draw.rect(display, GRID_BLUE, rect)
                         else:
@@ -101,10 +106,6 @@ def drawGrid(game_map): #game_map is gameMap obj
 
                   #print(self.mapArray[idx][idy][0].getCoord())
 
-#Create Map object (1)
-#mainMap = gameMap(50) #USE FOR 12 x 12 GRID
-mainMap = gameMap(20, MAP_WIDTH)
-
 #initialize text input object - reference https://github.com/Nearoo/pygame-text-input
 textinput = pygame_textinput.TextInputVisualizer(font_object=arial, font_color=[255, 255, 255])
 
@@ -135,11 +136,29 @@ def draw_game_window():
 
 #https://stackoverflow.com/questions/20289981/python-sockets-stop-recv-from-hanging
 def data_receiver():
-         #Assuming self.sock exists
-         data = client.recv(8192).decode()
-         print("DATA: ")
-         print(data)
-         data_queue.put(data)
+      while True: #very important to loop here
+            #add clause to close thread on server disconnect to stop the tons of errors on server shutdown
+            #Assuming self.sock exists
+            data = client.recv(8192)
+            try: #check for pickle
+                  unpickled_data = pickle.loads(data)
+
+                  if isinstance(unpickled_data, dataToSend): #check if pickle is a dataToSent object
+                        for e in unpickled_data.getGridSquares(): #get grid square objects
+                              mainMap.setGridSquare(e) #set client copy of map to objects
+                        for e in unpickled_data.getUnits():
+                              mainMap.addUnitObj(e)
+
+            #try decoding in text
+            except Exception as e:
+                  #print(str(e) + " Exception! in data_receiver()")
+                  try:
+                        decoded_data = data.decode()
+                        #print("DATA: ")
+                        print(decoded_data)
+                        data_queue.put(decoded_data)
+                  except Exception as e:
+                        print(str(e) + "Exception! in nested exception in data_reciever()")
 
          #edit the data in any way necessary here
 
@@ -156,7 +175,8 @@ while True:
 
       try:
             data = data_queue.get_nowait()
-            print(data)
+            #do something with data
+            #print(data)
       except queue.Empty:
             pass
       
@@ -175,12 +195,7 @@ while True:
                   pygame.display.quit()
                   pygame.QUIT
                   quit()
-
-            #raw_recv_data = client.recv(8192)
-            #print(raw_recv_data)
-            #unpickled_data = pickle.loads(raw_recv_data) #load pickeled data
-            
-            #should move this elsewhere
+ 
             #evaluate keyboard input and update units
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                   dataSent = dataToSend() #initialize data to send object
@@ -188,28 +203,43 @@ while True:
                   #Expected input 'Name, number, x, y, TEAM'
                   try:
                         capturedInput = capturedInput.split(',') #split into array
+                        unitName = capturedInput[0] #expect one within Unit Dict
+                        numUnits = int(capturedInput[1]) #expect integer
+                        xCoord = int(capturedInput[2]) #expect integer
+                        yCoord = int(capturedInput[3]) #expect integer
+                        inputTEAM = capturedInput[4] #expect either T or F
                   except Exception as e:
                         print(e)
-                  for i in range(int(capturedInput[1])):
-                        print(capturedInput[4])
-                        if capturedInput[4] == "T":
-                              mainMap.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], True)
-                              print(capturedInput[0] + " added!")
-                              dataSent.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], True) #add unit to data to send object
-                        elif capturedInput[4] == "F":
-                              mainMap.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], False)
-                              print(capturedInput[0] + " added!")
-                              dataSent.addUnit(capturedInput[0], [int(capturedInput[2]), int(capturedInput[3])], False) #add unit to data to send object
+                  for i in range(numUnits):
+                        if inputTEAM == "T":
+                              mainMap.addUnit(unitName, [xCoord, yCoord], True) #jank af
+                              print(unitName + " added!")
+                              try:
+                                    addUnit = Unit(unitName, True, xCoord, yCoord)
+                                    dataSent.addUnit(addUnit, True) #add unit to data to send object
+                              except Exception as e:
+                                    print(e)
+
+                        elif inputTEAM == "F":
+                              mainMap.addUnit(unitName, [xCoord, yCoord], False)
+                              print(unitName + " added!")
+
+                              try:
+                                    addUnit = Unit(unitName, False, yCoord, yCoord)
+                                    dataSent.addUnit(addUnit, False) #add unit to data to send object
+                              except Exception as e:
+                                    print(e)
                         else:
                               print("fuck")
 
+                  #prepare data package to send
                   data = pickle.dumps(dataSent)
-                  print(str(len(data)) + " data length")
+                  #print(str(len(data)) + " data length")
                   if len(data) > MAX_UDP_SIZE:
                         raise ValueError('Message too large')
                   client.send(data)
                   
                   #recalculate battle odds
-                  mainMap.calcBattle()
+                  #mainMap.calcBattle() --> MOVE TO Server side
 
 

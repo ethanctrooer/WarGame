@@ -3,10 +3,10 @@ from Unit import Unit
 
 #Object to track what's in each grid square
 class gridSquare(object):
-    def __init__(self, TEAM, isBattleSquare, isBoarderSquare, currentUnits, x, y):
+    def __init__(self, TEAM, isBattleSquare, isBorderSquare, currentUnits, x, y):
         self.TEAM = TEAM #BLUFOR is TRUE. OPFOR is FALSE.
         self.isBattleSquare = isBattleSquare #t/f
-        self.isBoarderSquare = isBoarderSquare
+        self.isBorderSquare = isBorderSquare
         self.currentUnits = currentUnits #array of current units present
         self.x = x
         self.y = y
@@ -15,6 +15,15 @@ class gridSquare(object):
 
     def getBattleStatus(self):
         return self.isBattleSquare
+    
+    def setBattleStatus(self, status):
+        self.isBattleSquare = status
+
+    def getBorderStatus(self):
+        return self.isBorderSquare
+
+    def setBorderStatus(self, status):
+        self.isBorderSquare = status
       
     def getCoord(self):
         coord = [self.x,self.y]
@@ -25,6 +34,9 @@ class gridSquare(object):
       
     def addUnits(self, unitName, TEAM):
         self.currentUnits.append(Unit(unitName, TEAM, self.x, self.y))
+
+    def addUnitObj(self, unitObj):
+        self.currentUnits.append(unitObj)
 
     def hasUnits(self):
         if len(self.currentUnits) > 0:

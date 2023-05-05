@@ -26,9 +26,9 @@ class Unit(object):
 
             try:
                   self.myStats = classDict[self.name]
-                  print(self.myStats)
+                  #print(self.myStats)
             except Exception as e:
-                  print(e)
+                  print("Exception! in Unit.py init, as: " + (str(e)))
 
       def getStats(self):
             return [self.name, self.myStats, self.TEAM]
